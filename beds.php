@@ -10,6 +10,19 @@ if(isset($_POST['add_bed'])){
     exit;
 }
 
+// --- Delete Bed ---
+if(isset($_GET['delete'])){
+    $id = (int)$_GET['delete'];
+
+    // Free any patient linked to this bed first
+    $conn->query("UPDATE patients SET bed_id=NULL WHERE bed_id=$id");
+    
+    // Then delete the bed
+    $conn->query("DELETE FROM beds WHERE bed_id=$id");
+    header("Location: beds.php");
+    exit;
+}
+
 // --- Fetch All Beds ---
 $result = $conn->query("SELECT * FROM beds ORDER BY bed_id ASC") or die($conn->error);
 ?>
@@ -37,7 +50,7 @@ $result = $conn->query("SELECT * FROM beds ORDER BY bed_id ASC") or die($conn->e
 </form>
 
 <!-- Bed List -->
-<div class="bg-white p-6 rounded-2xl shadow-md max-w-4xl mx-auto">
+<div class="bg-white p-6 rounded-2xl shadow-md max-w-5xl mx-auto">
     <h2 class="text-xl font-semibold mb-4">Bed Records</h2>
     <table class="w-full border-collapse text-center">
         <tr class="bg-blue-100">
@@ -46,6 +59,7 @@ $result = $conn->query("SELECT * FROM beds ORDER BY bed_id ASC") or die($conn->e
             <th class="border p-2">Type</th>
             <th class="border p-2">Status</th>
             <th class="border p-2">Patient ID</th>
+            <th class="border p-2">Actions</th>
         </tr>
         <?php while($row = $result->fetch_assoc()): ?>
         <tr>
@@ -54,6 +68,11 @@ $result = $conn->query("SELECT * FROM beds ORDER BY bed_id ASC") or die($conn->e
             <td class="border p-2"><?= $row['type'] ?></td>
             <td class="border p-2 <?= $row['status']=='Occupied'?'text-red-600':'text-green-600' ?>"><?= $row['status'] ?></td>
             <td class="border p-2"><?= $row['patient_id'] ? $row['patient_id'] : '-' ?></td>
+            <td class="border p-2">
+                <a href="?delete=<?= $row['bed_id'] ?>" 
+                   class="text-red-600 font-semibold hover:underline" 
+                   onclick="return confirm('⚠️ Are you sure you want to delete this bed?')">Delete</a>
+            </td>
         </tr>
         <?php endwhile; ?>
     </table>
