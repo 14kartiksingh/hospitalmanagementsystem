@@ -1,4 +1,6 @@
 <?php
+include('auth.php');
+enforce_access('admin');
 include('db_connect.php');
 
 // --- Add Staff ---

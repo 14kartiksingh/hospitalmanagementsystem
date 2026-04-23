@@ -1,12 +1,15 @@
 <?php
+include('auth.php');
 include('db_connect.php');
+
+$is_admin = check_role('admin');
 
 // Fetch Patients and Doctors for dropdowns
 $patients = $conn->query("SELECT patient_id, name FROM patients");
 $doctors = $conn->query("SELECT doctor_id, name FROM doctors");
 
 // --- Add Appointment ---
-if (isset($_POST['add_appointment'])) {
+if ($is_admin && isset($_POST['add_appointment'])) {
   $patient_id = $_POST['patient_id'];
   $doctor_id = $_POST['doctor_id'];
   $appointment_date = $_POST['appointment_date'];
@@ -19,19 +22,29 @@ if (isset($_POST['add_appointment'])) {
 }
 
 // --- Delete Appointment ---
-if (isset($_GET['delete'])) {
+if ($is_admin && isset($_GET['delete'])) {
   $id = $_GET['delete'];
   $conn->query("DELETE FROM appointments WHERE appointment_id=$id");
   header("Location: appointments.php");
   exit;
 }
 
-// --- Fetch All Appointments ---
+// --- Fetch Appointments Based on Role ---
+$role = $_SESSION['role'];
+$reference_id = $_SESSION['reference_id'];
+$where_clause = "";
+if ($role === 'patient') {
+    // If reference_id is null for some reason, ensure query returns nothing
+    $ref_id = intval($reference_id) > 0 ? intval($reference_id) : -1;
+    $where_clause = " WHERE a.patient_id = $ref_id ";
+}
+
 $query = "SELECT a.appointment_id, p.name AS patient_name, d.name AS doctor_name,
           a.appointment_date, a.reason, a.status
           FROM appointments a
           JOIN patients p ON a.patient_id = p.patient_id
           JOIN doctors d ON a.doctor_id = d.doctor_id
+          $where_clause
           ORDER BY a.appointment_id DESC";
 $result = $conn->query($query);
 ?>
@@ -46,6 +59,7 @@ $result = $conn->query($query);
 
   <h1 class="text-3xl font-bold text-center text-blue-600 mb-6">📅 Manage Appointments</h1>
 
+  <?php if ($is_admin): ?>
   <!-- Add Appointment Form -->
   <form method="POST" class="bg-white p-6 rounded-2xl shadow-md max-w-md mx-auto mb-8">
     <h2 class="text-xl font-semibold mb-4">Add Appointment</h2>
@@ -71,6 +85,7 @@ $result = $conn->query($query);
       Add Appointment
     </button>
   </form>
+  <?php endif; ?>
 
   <!-- Appointment List -->
   <div class="bg-white p-6 rounded-2xl shadow-md max-w-5xl mx-auto">
@@ -83,7 +98,7 @@ $result = $conn->query($query);
         <th class="border p-2">Date</th>
         <th class="border p-2">Reason</th>
         <th class="border p-2">Status</th>
-        <th class="border p-2">Actions</th>
+        <?php if ($is_admin): ?><th class="border p-2">Actions</th><?php endif; ?>
       </tr>
       <?php while($row = $result->fetch_assoc()): ?>
       <tr class="text-center">
@@ -93,10 +108,12 @@ $result = $conn->query($query);
         <td class="border p-2"><?= $row['appointment_date'] ?></td>
         <td class="border p-2"><?= $row['reason'] ?></td>
         <td class="border p-2"><?= $row['status'] ?></td>
+        <?php if ($is_admin): ?>
         <td class="border p-2">
           <a href="?delete=<?= $row['appointment_id'] ?>" class="text-red-600 font-semibold hover:underline"
              onclick="return confirm('Delete this appointment?')">Delete</a>
         </td>
+        <?php endif; ?>
       </tr>
       <?php endwhile; ?>
     </table>

@@ -1,8 +1,11 @@
 <?php
+include('auth.php');
+enforce_access(['admin', 'doctor']);
 include('db_connect.php');
+$is_admin = check_role('admin');
 
 // --- Add Patient ---
-if (isset($_POST['add_patient'])) {
+if ($is_admin && isset($_POST['add_patient'])) {
     $name = $_POST['name'];
     $age = $_POST['age'];
     $gender = $_POST['gender'];
@@ -42,7 +45,7 @@ if (isset($_POST['add_patient'])) {
 }
 
 // --- Assign Bed to Existing Patient ---
-if(isset($_POST['assign_bed_btn'])){
+if($is_admin && isset($_POST['assign_bed_btn'])){
     $patient_id = $_POST['patient_id'];
     $bed_id = $_POST['assign_bed'];
 
@@ -56,7 +59,7 @@ if(isset($_POST['assign_bed_btn'])){
 }
 
 // --- Delete Patient ---
-if (isset($_GET['delete'])) {
+if ($is_admin && isset($_GET['delete'])) {
     $id = $_GET['delete'];
     // Free the bed if assigned
     $bed_query = $conn->query("SELECT bed_id FROM patients WHERE patient_id=$id");
@@ -90,6 +93,7 @@ $result = $conn->query("
 <h1 class="text-3xl font-bold text-center text-blue-600 mb-6">👨‍⚕️ Manage Patients</h1>
 
 <!-- Add Patient Form -->
+<?php if ($is_admin): ?>
 <form method="POST" class="bg-white p-6 rounded-2xl shadow-md max-w-md mx-auto mb-8">
     <h2 class="text-xl font-semibold mb-4">Add Patient</h2>
     <input type="text" name="name" placeholder="Name" required class="w-full p-2 mb-3 border rounded">
@@ -125,6 +129,7 @@ $result = $conn->query("
         Add Patient
     </button>
 </form>
+<?php endif; ?>
 
 <!-- Patient List -->
 <div class="bg-white p-6 rounded-2xl shadow-md max-w-6xl mx-auto">
@@ -140,7 +145,7 @@ $result = $conn->query("
             <th class="border p-2">Disease</th>
             <th class="border p-2">Severity</th>
             <th class="border p-2">Bed</th>
-            <th class="border p-2">Actions</th>
+            <?php if ($is_admin): ?><th class="border p-2">Actions</th><?php endif; ?>
         </tr>
         <?php while ($row = $result->fetch_assoc()): ?>
         <tr>
@@ -154,6 +159,7 @@ $result = $conn->query("
             <td class="border p-2"><?= $row['severity'] ?></td>
             <td class="border p-2">
                 <?php if(!$row['bed_id']): ?>
+                    <?php if ($is_admin): ?>
                     <form method="POST">
                         <input type="hidden" name="patient_id" value="<?= $row['patient_id'] ?>">
                         <select name="assign_bed" required class="p-1 border rounded">
@@ -167,13 +173,18 @@ $result = $conn->query("
                         </select>
                         <button type="submit" name="assign_bed_btn" class="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700">Assign</button>
                     </form>
+                    <?php else: ?>
+                        Not Assigned
+                    <?php endif; ?>
                 <?php else: ?>
                     <?= $row['bed_number']." (".$row['bed_type'].")" ?>
                 <?php endif; ?>
             </td>
+            <?php if ($is_admin): ?>
             <td class="border p-2">
                 <a href="?delete=<?= $row['patient_id'] ?>" class="text-red-600 font-semibold hover:underline" onclick="return confirm('Delete this record?')">Delete</a>
             </td>
+            <?php endif; ?>
         </tr>
         <?php endwhile; ?>
     </table>
